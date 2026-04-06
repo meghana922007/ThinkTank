@@ -1,0 +1,57 @@
+// thinktank/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. USER MODEL
+model User {
+  id             String   @id @default(cuid())
+  username       String   @unique
+  email          String?  @unique
+  role           Role     @default(STUDENT)
+  profileScore   Int      @default(0)
+  lives          Int      @default(5)      // Tracks the 5 hearts
+  rank           String   @default("Rookie")
+  createdAt      DateTime @default(now())
+  solvedPuzzles  Puzzle[] @relation("UserPuzzles")
+}
+
+// 2. DOMAIN MODEL (e.g., Logic, Math, Verbal)
+model Domain {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  puzzles     Puzzle[]
+}
+
+// 3. PUZZLE MODEL
+model Puzzle {
+  id          String     @id @default(cuid())
+  title       String
+  question    String     @db.Text
+  answer      String     // The correct option
+  hint        String?    // The text revealed when spending points
+  difficulty  Difficulty @default(EASY)
+  points      Int        // Easy: 50, Medium: 150, Hard: 300
+  domain      Domain     @relation(fields: [domainId], references: [id])
+  domainId    String
+  solvedBy    User[]     @relation("UserPuzzles")
+}
+
+enum Role {
+  ADMIN
+  FACULTY
+  STUDENT
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
