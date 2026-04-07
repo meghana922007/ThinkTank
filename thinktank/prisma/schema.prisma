@@ -1,57 +1,70 @@
-// thinktank/prisma/schema.prisma
-
-generator client {
-  provider = "prisma-client-js"
-}
-
+// 1. THIS IS THE MISSING BLOCK
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
-// 1. USER MODEL
-model User {
-  id             String   @id @default(cuid())
-  username       String   @unique
-  email          String?  @unique
-  role           Role     @default(STUDENT)
-  profileScore   Int      @default(0)
-  lives          Int      @default(5)      // Tracks the 5 hearts
-  rank           String   @default("Rookie")
-  createdAt      DateTime @default(now())
-  solvedPuzzles  Puzzle[] @relation("UserPuzzles")
+// 2. This tells Prisma how to generate the client
+generator client {
+  provider = "prisma-client-js"
+}
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
 }
 
-// 2. DOMAIN MODEL (e.g., Logic, Math, Verbal)
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  password      String?   // For Credentials login
+  image         String?
+  points        Int       @default(0)
+  lives         Int       @default(5)
+  accounts      Account[]
+  sessions      Session[]
+  role          String?
+}
+// ... keep your datasource and generator at the top ...
+// ... keep Account, Session, and User models ...
+
 model Domain {
-  id          String   @id @default(cuid())
-  name        String   @unique
+  id          String   @id
+  name        String
   description String?
   puzzles     Puzzle[]
 }
 
-// 3. PUZZLE MODEL
 model Puzzle {
-  id          String     @id @default(cuid())
-  title       String
-  question    String     @db.Text
-  answer      String     // The correct option
-  hint        String?    // The text revealed when spending points
-  difficulty  Difficulty @default(EASY)
-  points      Int        // Easy: 50, Medium: 150, Hard: 300
-  domain      Domain     @relation(fields: [domainId], references: [id])
+  id          String   @id @default(cuid())
+  question    String   @db.Text
+  answer      String
+  hint        String?
+  points      Int      @default(100)
+  difficulty  String   @default("EASY")
+  metadata    String?  @db.Text // Store options/grid as JSON string
   domainId    String
-  solvedBy    User[]     @relation("UserPuzzles")
-}
-
-enum Role {
-  ADMIN
-  FACULTY
-  STUDENT
-}
-
-enum Difficulty {
-  EASY
-  MEDIUM
-  HARD
+  domain      Domain   @relation(fields: [domainId], references: [id])
 }

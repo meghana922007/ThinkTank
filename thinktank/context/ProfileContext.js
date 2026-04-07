@@ -14,13 +14,43 @@ export function ProfileProvider({ children }) {
     // 2. Sync with MySQL on Load
     useEffect(() => {
         const fetchUserData = async () => {
+            if (!userId || userId === 'undefined') {
+                console.warn("No active session. Skipping profile fetch.");
+                return;
+            }
             try {
                 const res = await fetch(`/api/user?id=${userId}`);
-                const data = await res.json();
+
+                // 1. Check if the server actually responded with success
+                if (!res.ok) {
+                    if (res.status === 403) {
+                        console.error("Access Denied: Check institutional email clearance.");
+                    } else if (res.status === 404) {
+                        console.warn("User profile not found in database.");
+                    }
+                    return;
+                }
+                
+                // 2. Check if the response body is empty before parsing
+                const text = await res.text();
+                if (!text) {
+                    console.error("API returned an empty body.");
+                    return;
+                }
+
+                // 3. Now it is safe to parse
+                const data = JSON.parse(text);
                 if (data) {
-                    setScore(data.profileScore);
+                    const currentPoints = data.points ?? 0;
+                    const currentLives = data.lives ?? 5;
+
+                    setScore(data.points);
                     setLives(data.lives);
-                    setRank(data.rank);
+
+                    // ✅ Recalculate Rank since it's not in your DB schema
+                    if (currentPoints >= 1000) setRank("Expert");
+                    else if (currentPoints >= 500) setRank("Thinker");
+                    else setRank("Rookie");
                 }
             } catch (error) {
                 console.error("Failed to sync with database:", error);
@@ -30,24 +60,39 @@ export function ProfileProvider({ children }) {
     }, [userId]);
 
     // 3. Game Logic: Points & Ranking
-    const addPoints = (points) => {
-        setScore((prev) => {
-            const newScore = prev + points;
-            // Simple Rank Logic
-            if (newScore >= 1000) setRank("Expert");
-            else if (newScore >= 500) setRank("Thinker");
-            return newScore;
+    const addPoints = async (points) => {
+        setScore((currentScore) => {
+            const current = Number(currentScore) || 0;
+
+            // 2. Convert the incoming points to a number (default to 0)
+            // Note: we use 'points' because that is what is passed in the function header
+            const toAdd = Number(points) || 0;
+
+            return current + toAdd;
         });
+        try {
+            await fetch('/api/user/update-score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: userId,
+                    pointsToAdd: points
+                }),
+            });
+        } catch (error) {
+            console.error("Failed to save score to database:", error);
+        }
     };
 
     // 4. Game Logic: Losing Lives
     const loseLife = () => {
-        setLives((prev) => {
-            if (prev <= 1) {
+        setLives((prevLives) => {
+            const current = Number(prevLives) || 5;
+            if (current <= 1) {
                 alert("Game Over! You've run out of lives.");
                 return 0;
             }
-            return prev - 1;
+            return current - 1;
         });
     };
 

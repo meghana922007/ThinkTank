@@ -14,17 +14,24 @@ export default function PuzzleList() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Update the fetch inside your useEffect
         const fetchPuzzles = async () => {
             try {
-                // We fetch all puzzles and filter by the current domainId
                 const res = await fetch('/api/puzzles');
+
+                // If the API doesn't exist yet, this will catch the error
+                if (!res.ok) {
+                    throw new Error(`Server responded with ${res.status}`);
+                }
+
                 const data = await res.json();
 
-                // Only show puzzles that belong to THIS domain (e.g., 'logic')
+                // Ensure domainId is compared correctly
                 const filtered = data.filter((p: any) => p.domainId === domainId);
                 setPuzzles(filtered);
             } catch (err) {
-                console.error("Failed to load puzzles");
+                console.error("Failed to load puzzles:", err);
+                setPuzzles([]); // Clear puzzles on error
             } finally {
                 setLoading(false);
             }

@@ -3,21 +3,31 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Brain, ChevronRight, Zap } from 'lucide-react';
+import ProfileHeader from '@/components/ProfileHeader';
 
 export default function Dashboard() {
     const [domains, setDomains] = useState([]);
 
     useEffect(() => {
-        // Fetch the domains you created in the Admin panel
         fetch('/api/admin/domains')
-            .then(res => res.json())
-            .then(data => setDomains(data));
+            .then(res => {
+                if (!res.ok) throw new Error("API not found or unauthorized");
+                return res.json();
+            })
+            .then(data => setDomains(data))
+            .catch(err => {
+                console.error("Dashboard fetch error:", err);
+                setDomains([]); // Set to empty array so it doesn't crash
+            });
     }, []);
 
     return (
+        
         <div className="max-w-6xl mx-auto px-4 py-12">
             <h2 className="text-4xl font-black mb-10 tracking-tighter">CHOOSE YOUR ARENA</h2>
-
+            <div className="w-full max-w-4xl mb-12">
+                <ProfileHeader />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {domains.map((domain: any) => (
                     <Link

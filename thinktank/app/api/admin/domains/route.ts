@@ -1,25 +1,19 @@
-// thinktank/app/api/admin/domains/route.ts
-import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-
-export async function POST(request: Request) {
-    try {
-        const { name, description } = await request.json();
-
-        // Create a URL-friendly ID (e.g., "Math Logic" becomes "math-logic")
-        const id = name.toLowerCase().replace(/\s+/g, '-');
-
-        const newDomain = await prisma.domain.create({
-            data: { id, name, description },
-        });
-
-        return NextResponse.json(newDomain);
-    } catch (error) {
-        return NextResponse.json({ error: "Domain already exists or DB error" }, { status: 500 });
-    }
-}
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-    const domains = await prisma.domain.findMany();
-    return NextResponse.json(domains);
+    try {
+        // 1. Try to get real data
+        const domains = await prisma.domain.findMany();
+
+        // 2. Return the data as JSON
+        return NextResponse.json(domains);
+    } catch (error) {
+        console.error("API ERROR:", error);
+
+        // 3. If the Database fails, return an empty list so the Admin page doesn't crash
+        return NextResponse.json([
+            { id: "temp-1", name: "Check Database Connection" }
+        ]);
+    }
 }

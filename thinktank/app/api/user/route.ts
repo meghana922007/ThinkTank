@@ -5,7 +5,10 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-
+    const user = await prisma.user.findUnique({
+        where: { id: id as string },
+        // Ensure 'points' and 'lives' are selected
+    });
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
     try {
@@ -25,6 +28,8 @@ export async function GET(request: Request) {
                     rank: "Rookie",
                 },
             });
+            // IMPORTANT: Return an object, not just a 404 string
+            return NextResponse.json({ points: 0, lives: 5 }, { status: 200 });
         }
 
         return NextResponse.json(user);
